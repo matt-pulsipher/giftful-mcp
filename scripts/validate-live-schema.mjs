@@ -54,10 +54,12 @@ const checks = [
     },
   ],
   ["DELETE_WISH", { wishId: -2147483648, wishlistId: -2147483648 }],
+  ["UPDATE_WISH_SORT_ORDER", { wishId: -2147483648, prevWishId: null }],
   ["CLAIM_WISH", { wishId: -2147483648 }],
   ["UNCLAIM_WISH", { wishId: -2147483648 }],
   ["CREATE_CATEGORY", { wishlistId: -2147483648, name: missing }],
   ["DELETE_CATEGORY", { id: -2147483648, wishlistId: -2147483648 }],
+  ["REORDER_WISHLIST_CATEGORIES", { wishlistId: -2147483648, categoryIds: [] }],
 ];
 
 let failed = false;

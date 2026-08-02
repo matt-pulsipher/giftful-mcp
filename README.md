@@ -9,10 +9,10 @@ A local Model Context Protocol server for logging in to Giftful and managing lis
 - Browser-based authentication for the sign-in methods offered by Giftful
 - List, inspect, create, patch, and soft-delete lists
 - Navigate accessible lists from followed friends, followers, and following
-- List, add, patch, and delete wishes
+- List, add, patch, reorder, and delete wishes
 - Claim and unclaim wishes on friends' lists
 - Add a product URL and let Giftful retrieve its title, price, image, and description
-- Create and delete list categories
+- Create, reorder, and delete list categories
 - Multiple accounts through named profiles
 
 The password is used only for the login request and is never persisted. Only Giftful's refresh token and basic user metadata are stored. Short-lived access tokens remain in memory.
@@ -117,26 +117,28 @@ The equivalent generic MCP client configuration is:
 
 ## Tools
 
-| Tool                        | Purpose                                                |
-| --------------------------- | ------------------------------------------------------ |
-| `giftful_auth_status`       | Check or validate persistent authentication            |
-| `giftful_logout`            | Revoke and remove the persistent session               |
-| `giftful_list_lists`        | List the authenticated user's lists                    |
-| `giftful_list_friend_lists` | List accessible lists from followed friends            |
-| `giftful_list_followers`    | List followers without changing relationships          |
-| `giftful_list_following`    | List actively followed accounts                        |
-| `giftful_get_list`          | Inspect a list and its settings/categories             |
-| `giftful_create_list`       | Create a wishlist, registry, or personal list          |
-| `giftful_update_list`       | Patch list settings without overwriting omitted values |
-| `giftful_delete_list`       | Soft-delete a list; requires `confirm=true`            |
-| `giftful_list_wishes`       | List wishes and retrieve their IDs                     |
-| `giftful_add_wish`          | Add manually or from a scraped product URL             |
-| `giftful_update_wish`       | Patch one wish                                         |
-| `giftful_delete_wish`       | Permanently delete one wish; requires confirmation     |
-| `giftful_claim_wish`        | Reserve a wish in Giftful; requires confirmation       |
-| `giftful_unclaim_wish`      | Release a Giftful reservation; requires confirmation   |
-| `giftful_create_category`   | Add a list category                                    |
-| `giftful_delete_category`   | Remove a category while keeping its wishes             |
+| Tool                         | Purpose                                                |
+| ---------------------------- | ------------------------------------------------------ |
+| `giftful_auth_status`        | Check or validate persistent authentication            |
+| `giftful_logout`             | Revoke and remove the persistent session               |
+| `giftful_list_lists`         | List the authenticated user's lists                    |
+| `giftful_list_friend_lists`  | List accessible lists from followed friends            |
+| `giftful_list_followers`     | List followers without changing relationships          |
+| `giftful_list_following`     | List actively followed accounts                        |
+| `giftful_get_list`           | Inspect a list and its settings/categories             |
+| `giftful_create_list`        | Create a wishlist, registry, or personal list          |
+| `giftful_update_list`        | Patch list settings without overwriting omitted values |
+| `giftful_delete_list`        | Soft-delete a list; requires `confirm=true`            |
+| `giftful_list_wishes`        | List wishes and retrieve their IDs                     |
+| `giftful_add_wish`           | Add manually or from a scraped product URL             |
+| `giftful_update_wish`        | Patch one wish                                         |
+| `giftful_reorder_wish`       | Move a wish after another wish or to the beginning     |
+| `giftful_delete_wish`        | Permanently delete one wish; requires confirmation     |
+| `giftful_claim_wish`         | Reserve a wish in Giftful; requires confirmation       |
+| `giftful_unclaim_wish`       | Release a Giftful reservation; requires confirmation   |
+| `giftful_create_category`    | Add a list category                                    |
+| `giftful_reorder_categories` | Persist the complete category order                    |
+| `giftful_delete_category`    | Remove a category while keeping its wishes             |
 
 Examples of natural requests after connecting:
 
@@ -147,6 +149,10 @@ Examples of natural requests after connecting:
 - “Add this URL to my Christmas list and mark it most desired.”
 - “Rename my `christmas-2026` list and make link viewing private.”
 - “Change wish 12345 to quantity 2.”
+- “Move wish 12345 to the top of my birthday list.”
+- “Put the Books category before Games.”
+
+Giftful stores one list-wide relative order for wishes and a separate order for categories. When wishes are grouped for display, category order takes precedence; wishes inside each category retain their relative list-wide order. `giftful_reorder_wish` moves one wish after another (or to the global beginning), while `giftful_reorder_categories` accepts the complete category ID order.
 
 Claiming is Giftful's reservation mechanism: it tells other Giftful users that the
 item is being handled. It does not place an order, charge a payment method, or buy

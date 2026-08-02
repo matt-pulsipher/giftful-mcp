@@ -307,6 +307,92 @@ test("claim and unclaim reserve wishes without pretending to purchase them", asy
   assert.deepEqual(operations, ["claim", "unclaim"]);
 });
 
+test("wish and category reorder operations preserve Giftful ordering semantics", async () => {
+  const store = new MemoryStore();
+  store.record = {
+    schemaVersion: 1,
+    refreshToken: { id: 12, token: "refresh-secret" },
+    user,
+  };
+  const accessToken = jwt(Math.floor(Date.now() / 1000) + 3600);
+  const mutations: Array<{
+    query: string;
+    variables: Record<string, unknown>;
+  }> = [];
+  const client = new GiftfulClient(store, {
+    fetchImpl: async (_input, init) => {
+      const request = JSON.parse(String(init?.body)) as {
+        query: string;
+        variables: Record<string, unknown>;
+      };
+      if (request.query.includes("mutation RefreshToken")) {
+        return jsonResponse({ data: { refreshToken: { accessToken, user } } });
+      }
+      if (request.query.includes("query Wishlist(")) {
+        return jsonResponse({
+          data: {
+            wishlist: {
+              id: 99,
+              userId: 7,
+              slug: "birthday",
+              categories: [
+                { id: 201, wishlistId: 99, name: "Books", sortOrder: 1 },
+                { id: 202, wishlistId: 99, name: "Games", sortOrder: 2 },
+              ],
+            },
+          },
+        });
+      }
+      if (request.query.includes("query Wishes(")) {
+        return jsonResponse({
+          data: {
+            wishes: [
+              { id: 54, wishlistId: 99, categoryId: 201, sortOrder: 1 },
+              { id: 55, wishlistId: 99, categoryId: 201, sortOrder: 2 },
+            ],
+          },
+        });
+      }
+      if (request.query.includes("mutation UpdateWishSortOrder")) {
+        mutations.push(request);
+        return jsonResponse({ data: { updateWishSortOrder: { id: 55 } } });
+      }
+      if (request.query.includes("mutation ReorderWishlistCategories")) {
+        mutations.push(request);
+        return jsonResponse({
+          data: {
+            reorderWishlistCategories: [
+              { id: 202, wishlistId: 99, name: "Games", sortOrder: 1 },
+              { id: 201, wishlistId: 99, name: "Books", sortOrder: 2 },
+            ],
+          },
+        });
+      }
+      throw new Error("Unexpected reorder operation.");
+    },
+  });
+
+  const wish = await client.reorderWish("birthday", 55, 54);
+  const categories = await client.reorderCategories("birthday", [202, 201]);
+
+  assert.deepEqual(wish, { id: 55 });
+  assert.deepEqual(
+    categories.map((category) => category.id),
+    [202, 201],
+  );
+  assert.deepEqual(
+    mutations.map((request) => request.variables),
+    [
+      { wishId: 55, prevWishId: 54 },
+      { wishlistId: 99, categoryIds: [202, 201] },
+    ],
+  );
+  await assert.rejects(
+    () => client.reorderCategories("birthday", [201, 201]),
+    /every category.*exactly once/,
+  );
+});
+
 test("wish updates stop after a bounded lookup", async () => {
   const store = new MemoryStore();
   store.record = {

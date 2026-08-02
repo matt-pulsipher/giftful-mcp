@@ -1,6 +1,6 @@
 {
   "name": "giftful-mcp",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "A local MCP server for managing Giftful lists, friends, and wishes",
   "type": "module",
   "private": true,

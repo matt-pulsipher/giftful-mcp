@@ -66,6 +66,7 @@ export const WISH_FIELDS = `
   userId
   wishlistId
   categoryId
+  sortOrder
   dynamicPricing
   brand { name icon domain }
 `;
@@ -335,6 +336,14 @@ export const UPDATE_WISH = `
   }
 `;
 
+export const UPDATE_WISH_SORT_ORDER = `
+  mutation UpdateWishSortOrder($wishId: Int!, $prevWishId: Int) {
+    updateWishSortOrder(wishId: $wishId, prevWishId: $prevWishId) {
+      id
+    }
+  }
+`;
+
 export const DELETE_WISH = `
   mutation DeleteWish($wishId: Int!, $wishlistId: Int!) {
     deleteWish(id: $wishId, wishlistId: $wishlistId) {
@@ -392,5 +401,23 @@ export const CREATE_CATEGORY = `
 export const DELETE_CATEGORY = `
   mutation DeleteWishlistCategory($id: Int!, $wishlistId: Int!) {
     deleteWishlistCategory(id: $id, wishlistId: $wishlistId)
+  }
+`;
+
+export const REORDER_WISHLIST_CATEGORIES = `
+  mutation ReorderWishlistCategories(
+    $wishlistId: Int!
+    $categoryIds: [Int!]!
+  ) {
+    reorderWishlistCategories(
+      wishlistId: $wishlistId
+      categoryIds: $categoryIds
+    ) {
+      id
+      wishlistId
+      name
+      sortOrder
+      wishCount
+    }
   }
 `;

@@ -48,6 +48,8 @@ test("MCP handshake exposes the complete Giftful tool set", async () => {
       "giftful_list_lists",
       "giftful_list_wishes",
       "giftful_logout",
+      "giftful_reorder_categories",
+      "giftful_reorder_wish",
       "giftful_unclaim_wish",
       "giftful_update_list",
       "giftful_update_wish",

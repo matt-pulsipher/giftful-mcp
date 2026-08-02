@@ -679,6 +679,69 @@ export class GiftfulClient {
     return data.updateWish;
   }
 
+  async reorderWish(
+    wishlistSlug: string,
+    wishId: number,
+    previousWishId: number | null,
+  ): Promise<{ id: number }> {
+    if (wishId === previousWishId) {
+      throw new GiftfulApiError(
+        "A wish cannot be placed after itself.",
+        "validation",
+      );
+    }
+
+    const user = await this.currentUser();
+    const wishlist = await this.getWishlist(wishlistSlug);
+    if (wishlist.userId !== user.id) {
+      throw new GiftfulApiError(
+        "Only the owner can reorder wishes on this wishlist.",
+        "validation",
+      );
+    }
+
+    let foundWish = false;
+    let foundPreviousWish = previousWishId === null;
+    let reachedLookupLimit = true;
+    for (let page = 1; page <= MAX_WISH_LOOKUP_PAGES; page += 1) {
+      const wishes = await this.listWishes(wishlistSlug, {
+        page,
+        perPage: WISH_LOOKUP_PAGE_SIZE,
+      });
+      foundWish ||= wishes.some((wish) => wish.id === wishId);
+      foundPreviousWish ||=
+        previousWishId !== null &&
+        wishes.some((wish) => wish.id === previousWishId);
+      if (foundWish && foundPreviousWish) break;
+      if (wishes.length < WISH_LOOKUP_PAGE_SIZE) {
+        reachedLookupLimit = false;
+        break;
+      }
+    }
+
+    const missingIds = [
+      ...(!foundWish ? [wishId] : []),
+      ...(!foundPreviousWish && previousWishId !== null
+        ? [previousWishId]
+        : []),
+    ];
+    if (missingIds.length) {
+      const scope = reachedLookupLimit
+        ? `within the first ${MAX_WISH_LOOKUP_PAGES * WISH_LOOKUP_PAGE_SIZE} wishes on ${wishlistSlug}`
+        : `on ${wishlistSlug}`;
+      throw new GiftfulApiError(
+        `Wish ${missingIds.join(", ")} ${missingIds.length === 1 ? "was" : "were"} not found ${scope}.`,
+        "validation",
+      );
+    }
+
+    const data = await this.graphql<{ updateWishSortOrder: { id: number } }>(
+      operations.UPDATE_WISH_SORT_ORDER,
+      { wishId, prevWishId: previousWishId },
+    );
+    return data.updateWishSortOrder;
+  }
+
   async deleteWish(
     wishlistSlug: string,
     wishId: number,
@@ -733,6 +796,44 @@ export class GiftfulClient {
       { id: categoryId, wishlistId: wishlist.id },
     );
     return data.deleteWishlistCategory;
+  }
+
+  async reorderCategories(
+    wishlistSlug: string,
+    categoryIds: number[],
+  ): Promise<WishlistCategory[]> {
+    const user = await this.currentUser();
+    const wishlist = await this.getWishlist(wishlistSlug);
+    if (wishlist.userId !== user.id) {
+      throw new GiftfulApiError(
+        "Only the owner can reorder categories on this wishlist.",
+        "validation",
+      );
+    }
+
+    const existingIds = (wishlist.categories ?? []).map(
+      (category) => category.id,
+    );
+    const requestedIds = new Set(categoryIds);
+    const existingIdSet = new Set(existingIds);
+    const isCompleteOrder =
+      requestedIds.size === categoryIds.length &&
+      categoryIds.length === existingIds.length &&
+      categoryIds.every((id) => existingIdSet.has(id));
+    if (!isCompleteOrder) {
+      throw new GiftfulApiError(
+        `category_ids must contain every category on ${wishlistSlug} exactly once. Current IDs: ${existingIds.join(", ") || "none"}.`,
+        "validation",
+      );
+    }
+
+    const data = await this.graphql<{
+      reorderWishlistCategories: WishlistCategory[];
+    }>(operations.REORDER_WISHLIST_CATEGORIES, {
+      wishlistId: wishlist.id,
+      categoryIds,
+    });
+    return data.reorderWishlistCategories;
   }
 
   async scrapeProduct(url: string): Promise<ScrapedProduct> {

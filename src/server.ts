@@ -50,7 +50,7 @@ export async function createGiftfulMcpServer(
   const store = options.store ?? (await createCredentialStore());
   const client = new GiftfulClient(store, options);
   const server = new McpServer(
-    { name: "giftful-mcp", version: "0.1.0" },
+    { name: "giftful-mcp", version: "0.2.0" },
     {
       instructions:
         "Manage the authenticated user's Giftful lists and wishes, and navigate the lists of people they follow. Call giftful_auth_status before Giftful operations. Authentication is CLI-only: if login is required, give the user the commands returned by giftful_auth_status. Never ask the user to put a password in chat. Prefer slugs returned by giftful_list_lists or giftful_list_friend_lists. Claiming reserves a wish inside Giftful but does not purchase it from a retailer. Deletion, claim, and unclaim tools require confirm=true.",
@@ -534,6 +534,41 @@ export async function createGiftfulMcpServer(
   );
 
   server.registerTool(
+    "giftful_reorder_wish",
+    {
+      title: "Reorder a wish",
+      description:
+        "Update the list-wide relative wish order by moving one wish immediately after another. Omit or set after_wish_id=null to move it to the beginning. When Giftful groups wishes by category, category order takes precedence and this relative order controls placement within each category; use an after_wish_id from the same category for a predictable visible result.",
+      inputSchema: {
+        list_slug: z.string().min(1),
+        wish_id: z.number().int().positive(),
+        after_wish_id: z
+          .number()
+          .int()
+          .positive()
+          .nullable()
+          .optional()
+          .default(null),
+      },
+      annotations: { readOnlyHint: false, idempotentHint: true },
+    },
+    async ({ list_slug, wish_id, after_wish_id }) => {
+      try {
+        return jsonResult({
+          reordered: await client.reorderWish(
+            list_slug,
+            wish_id,
+            after_wish_id,
+          ),
+          after_wish_id,
+        });
+      } catch (error) {
+        return errorResult(error);
+      }
+    },
+  );
+
+  server.registerTool(
     "giftful_create_category",
     {
       title: "Create a list category",
@@ -628,6 +663,29 @@ export async function createGiftfulMcpServer(
         requireConfirmation(confirm, `delete category ${category_id}`);
         return jsonResult({
           deleted: await client.deleteCategory(list_slug, category_id),
+        });
+      } catch (error) {
+        return errorResult(error);
+      }
+    },
+  );
+
+  server.registerTool(
+    "giftful_reorder_categories",
+    {
+      title: "Reorder list categories",
+      description:
+        "Persist the primary display order of categories for an owned list. category_ids must contain every category ID from giftful_get_list exactly once, in the desired order. Wishes retain their list-wide relative order within each category.",
+      inputSchema: {
+        list_slug: z.string().min(1),
+        category_ids: z.array(z.number().int().positive()).max(1000),
+      },
+      annotations: { readOnlyHint: false, idempotentHint: true },
+    },
+    async ({ list_slug, category_ids }) => {
+      try {
+        return jsonResult({
+          categories: await client.reorderCategories(list_slug, category_ids),
         });
       } catch (error) {
         return errorResult(error);

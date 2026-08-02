@@ -144,6 +144,7 @@ export interface Wish {
   userId: number;
   wishlistId: number;
   categoryId?: number | null;
+  sortOrder?: number;
   dynamicPricing?: boolean;
   brand?: WishBrand | null;
 }
